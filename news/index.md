@@ -1,5 +1,25 @@
 # Changelog
 
+## deformetricar (development version)
+
+### Bug fixes
+
+- `deformetrica` subprocesses no longer discard their standard error.
+  Previously every call ran with `stderr = FALSE` unless
+  `verbose = TRUE`, so a failed fit could report only an exit status and
+  “Re-run with `verbose = TRUE`” — advice that is unhelpful in a batch
+  of hundreds and misleading when the cause is transient (the machine
+  being out of memory, say, in which case re-running the one pair that
+  failed may well succeed). Diagnosing such a run meant locating the
+  subprocess’s temporary directory to read Deformetrica’s own log.
+  Errors raised by
+  [`deformetrica_register()`](https://natverse.github.io/deformetricar/reference/deformetrica_register.md),
+  [`deformetrica_register_multi()`](https://natverse.github.io/deformetricar/reference/deformetrica_register_multi.md)
+  and
+  [`deformetrica_shoot()`](https://natverse.github.io/deformetricar/reference/deformetrica_shoot.md)
+  now carry the tail of Deformetrica’s stderr, so they say what actually
+  went wrong.
+
 ## deformetricar 1.0.0
 
 A major modernisation: `deformetricar` is now a focused client for

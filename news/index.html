@@ -36,6 +36,14 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="development version" id="deformetricar-development-version">deformetricar (development version)<a class="anchor" aria-label="anchor" href="#deformetricar-development-version"></a></h2>
+<div class="section level3">
+<h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
+<ul><li>
+<code>deformetrica</code> subprocesses no longer discard their standard error. Previously every call ran with <code>stderr = FALSE</code> unless <code>verbose = TRUE</code>, so a failed fit could report only an exit status and “Re-run with <code>verbose = TRUE</code>” — advice that is unhelpful in a batch of hundreds and misleading when the cause is transient (the machine being out of memory, say, in which case re-running the one pair that failed may well succeed). Diagnosing such a run meant locating the subprocess’s temporary directory to read Deformetrica’s own log. Errors raised by <code><a href="../reference/deformetrica_register.html">deformetrica_register()</a></code>, <code><a href="../reference/deformetrica_register_multi.html">deformetrica_register_multi()</a></code> and <code><a href="../reference/deformetrica_shoot.html">deformetrica_shoot()</a></code> now carry the tail of Deformetrica’s stderr, so they say what actually went wrong.</li>
+</ul></div>
+</div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="1.0.0" id="deformetricar-100">deformetricar 1.0.0<a class="anchor" aria-label="anchor" href="#deformetricar-100"></a></h2>
 <p>A major modernisation: <code>deformetricar</code> is now a focused client for Deformetrica (&gt;= 4.3), meeting current R package standards. This 1.0.0 release marks a clean break from the 10-year-old, L1-larva-specific <code>ShootAndFlow3</code>/<code>sparseMatching3</code> era: the package is now template- and species-agnostic. The old L1 symmetrisation helpers (<code>symmetrisel1()</code>, <code>otherside()</code>, <code>apply.mirror.affine()</code>) are no longer exported — they are rebuilt from scratch as a walkthrough in the L1 vignette, showing how to compose a symmetrising warp from the general API.</p>
 <div class="section level3">
