@@ -1,4 +1,33 @@
 # Deformetrica >= 4 client (estimate + compute). Deformetrica 4 replaced the 2.1
+
+# Run a `deformetrica` subcommand, CAPTURING stderr even when quiet.
+#
+# Previously stderr was sent to FALSE (discarded) unless verbose=TRUE, so a failed fit reported only an
+# exit status and "Re-run with verbose=TRUE" -- useless in a long batch, where re-running the one pair
+# that failed may not reproduce a transient condition. Diagnosing a run in which nearly every fit died
+# meant finding the process's temp directory via lsof to read Deformetrica's own log, where the actual
+# cause ("Could not set torch settings", i.e. the machine was out of memory) had been sitting all along.
+# Now the tail of stderr is attached to the status and surfaced in the error message.
+.dfca_run <- function(exe, args, verbose = FALSE) {
+  if (isTRUE(verbose)) return(system2(exe, args, stdout = "", stderr = ""))
+  err <- tempfile(fileext = ".err")
+  on.exit(unlink(err), add = TRUE)
+  status <- system2(exe, args, stdout = FALSE, stderr = err)
+  if (!identical(as.integer(status), 0L)) {
+    txt <- tryCatch(readLines(err, warn = FALSE), error = function(e) character(0))
+    txt <- txt[nzchar(trimws(txt))]
+    attr(status, "stderr") <- utils::tail(txt, 15L)
+  }
+  status
+}
+
+# Compose the error message for a failed run, including whatever Deformetrica actually said.
+.dfca_fail <- function(what, status) {
+  msg <- attr(status, "stderr")
+  stop(sprintf("`deformetrica %s` failed (exit %s).%s", what, as.integer(status),
+               if (length(msg)) paste0("\nDeformetrica said:\n  ", paste(msg, collapse = "\n  "))
+               else " No stderr was produced; re-run with verbose=TRUE."), call. = FALSE)
+}
 # `ShootAndFlow3` C++ binary (paramDiffeos.xml / CP_final.txt / Mom_final.txt),
 # which no longer exists in Deformetrica 4.x. Deformetrica 4 instead exposes a
 # single `deformetrica` CLI whose `compute` subcommand runs a <model-type>Shooting
@@ -114,13 +143,9 @@ deformetrica_shoot <- function(x, control_points, momenta = NULL, kernel_width =
   .dfca_write_min_optimization(file.path(workdir, "optimization_parameters.xml"))
 
   owd <- setwd(workdir); on.exit(setwd(owd), add = TRUE)
-  status <- system2(exe, c("compute", "model.xml", "-p", "optimization_parameters.xml",
-                           "--output=output/"),
-                    stdout = if (verbose) "" else FALSE,
-                    stderr = if (verbose) "" else FALSE)
-  if (!identical(as.integer(status), 0L))
-    stop("`deformetrica compute` failed (exit ", status, "). Re-run with verbose=TRUE.",
-         call. = FALSE)
+  status <- .dfca_run(exe, c("compute", "model.xml", "-p", "optimization_parameters.xml",
+                             "--output=output/"), verbose = verbose)
+  if (!identical(as.integer(status), 0L)) .dfca_fail("compute", status)
 
   # Re-cast a deformed coordinate matrix back to the input's class.
   as_input <- function(out) {
@@ -385,12 +410,9 @@ deformetrica_register <- function(source, target, kernel_width,
     file.path(workdir, "optimization_parameters.xml"))
 
   owd <- setwd(workdir); on.exit(setwd(owd), add = TRUE)
-  status <- system2(exe, c("estimate", "model.xml", "data_set.xml", "-p",
-                           "optimization_parameters.xml", "--output=output/"),
-                    stdout = if (verbose) "" else FALSE,
-                    stderr = if (verbose) "" else FALSE)
-  if (!identical(as.integer(status), 0L))
-    stop("`deformetrica estimate` failed (exit ", status, "). Re-run with verbose=TRUE.", call. = FALSE)
+  status <- .dfca_run(exe, c("estimate", "model.xml", "data_set.xml", "-p",
+                             "optimization_parameters.xml", "--output=output/"), verbose = verbose)
+  if (!identical(as.integer(status), 0L)) .dfca_fail("estimate", status)
   od <- file.path(workdir, "output")
   cp  <- list.files(od, pattern = "ControlPoints\\.txt$", full.names = TRUE)
   mom <- list.files(od, pattern = "Momenta\\.txt$", full.names = TRUE)
@@ -603,11 +625,9 @@ deformetrica_register_multi <- function(sources, targets, kernel_width,
     file.path(workdir, "optimization_parameters.xml"))
 
   owd <- setwd(workdir); on.exit(setwd(owd), add = TRUE)
-  status <- system2(exe, c("estimate", "model.xml", "data_set.xml", "-p",
-                           "optimization_parameters.xml", "--output=output/"),
-                    stdout = if (verbose) "" else FALSE, stderr = if (verbose) "" else FALSE)
-  if (!identical(as.integer(status), 0L))
-    stop("`deformetrica estimate` (multi-object) failed (exit ", status, ").", call. = FALSE)
+  status <- .dfca_run(exe, c("estimate", "model.xml", "data_set.xml", "-p",
+                             "optimization_parameters.xml", "--output=output/"), verbose = verbose)
+  if (!identical(as.integer(status), 0L)) .dfca_fail("estimate (multi-object)", status)
   od <- file.path(workdir, "output")
   cp  <- list.files(od, pattern = "ControlPoints\\.txt$", full.names = TRUE)
   mom <- list.files(od, pattern = "Momenta\\.txt$", full.names = TRUE)
